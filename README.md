@@ -9,13 +9,35 @@ __Note:__ This is a code backup, it's not runable due to the difference file pat
 
 
 ## Solution  
-1. 将训练集切片成测试集样本大小，通过overlap采样得到10k个样本，作为采样训练集  
-2. 将采样训练集reshap成(100,1500)和(25,6000)的片段，放到LSTM和CNN网络里提取DL特征  
-3. 提取采样训练集的统计特征（mean,std,min,max,ttf和频段滤波之后的这些特征）  
-4. 对统计特征进行随机混合、筛选、过滤(ks_2samp & correlate check)，抽取20个左右的特征（这步是因为train和test分布差异较大，减小过拟合风险）  
-5. 将DL特征和过滤后的统计特征组合，形成片段特征向量  
-6. 通过NN，RF，SVR，LGB，XGB等方法进行预测  
-7. 将预测值ensemble（这里选择stacking，和直接去平均，最终LB得分实际上是直接去平均好）  
+1. __采样__  
+	* 如果训练集采用不重复采样，只能生成~4k个样本，样本量过小，容易overfit  
+	* 如果采用有重复采样2w个，意味着每个样本都包含3个左右别的样本的片段，可能造成冗余，影响训练速度  
+	* 大致试验了几次，选择有重复采样1w个样本  
+2. __交叉验证：__  
+	* 选择3fold交叉验证，因为bert要跑很久，5fold太久了  
+	* 所有步骤，哪怕不同的stage，也要严格遵守同一份cv，避免泄露  
+3. __提取DL Features__  
+	* 将采样训练集reshap成(100,1500)和(25,6000)的片段，这里仍然需要提取片段的手工特征，而后放到LSTM和CNN网络里提取DL特征  
+	* LSTM的效果比CNN好  
+	* 可以考虑加self-attention，或者直接用类似bert的结构，效果应该能有提升  
+	* 为了防止过拟合，每个模型提取的特征维度选择10（甚至可以更小）  
+4. __提取统计特征__  
+	* mean,std,min,max,分位数,等等一些基础特征  
+	* tsfresh.feature_extraction的一些高级特征  
+	* 原始波形经过fft，频带滤波，窗口平滑后的基础特征和高级特征  
+	* 加dropout，weight decay，防止过拟合  
+5. __特征生成和过滤__：refer feature_importance.py  
+	* 将统计特征随机组合，得到新的特征，通过LGB筛选出重要性高的特征~2w(每次选择topn，重复若干次)  
+	* 通过ks检验（scipy.stats.ks_2samp），检查特征在训练集和测试集上分布是否相同，筛除分布差异大的  
+	* 通过相似度检测（pandas的corr），筛除互相关性高的特征，因为相关性高的特征会产生冗余  
+	* 最终选择20个统计特征  
+6. __多模型Predict__：将DL特征和统计特征拼接，得到片段特征向量，通过NN，RF，SVR，LGB，XGB等方法进行预测  
+	* NN加dropout，weight decay， LGB、XGB、RF减小树深和叶子数，防止过拟合  
+7. __模型融合__：这里尝试了两种方案  
+	* 直接取平均  
+	* stacking，第二阶段用regression求权重，最后结果加权平均  
+	* 在public LB和CV上stacking得分高，实际priveate LB上直接取平均好，能到80名，这再次证明了这次比赛的训练集，验证集，测试集的分布差异较大，及其容易过拟合  
+8. __Note：__ 这次比赛的训练集，验证集，测试集的分布差异较大，包括训练集自身不同地震段的分布都不均与（这点可以从不同kfold导致cv差异很大看出）所以防止过拟合尤为重要  
 <img src="./earthquake_architectural.png">  
 
 
@@ -62,15 +84,6 @@ __Note:__ This is a code backup, it's not runable due to the difference file pat
 
 ```
 
-## 重难点
-这次比赛的主要难点是 __防止过拟合__ 和 __特征工程__   
-__过拟合问题：__ 训练集和测试集分布不一致，包括训练集自身不同地震段的分布都不均与（这点可以从不同kfold导致cv差异很大看出）所以防止过拟合尤为重要，为了防止过拟合采用了一下三种手段：  
-1. 一般的模型防止过拟合手段，DL加dropout，weight decay， LGB、XGB、RF减小树深和叶子数  
-2. 通过ks检验（scipy.stats.ks_2samp），检查特征在训练集和测试集上分布是否相同，筛除分布差异大的  
-3. 通过相似度检测（pandas的corr），筛除互相关性高的特征，因为相关性高的特征会产生冗余  
-4. 在ensemble时尽可能采取简单的方法，这里试了我采用的是stacking，第二阶段用linearregress，特尝试了直接取平均，很可惜最后提交的是regress的，其实最终得分取平均的会更高，能排到80名  
-
-__特征工程：__ python有一个特征抽取的包tsfresh，再加上scipy里面有一些信号处理的包signal，主要就是一些统计特征比如，min,max,mean,std,波峰波谷数，局部斜率，以及fft，频带滤波，窗口平滑之后的这些特征。在抽取完这些特征之后还做了特征的混合和过滤，最后选取了20个特征值。  
 
 ## Top Rank Solution  
 有几个solution比较印象深刻：  
