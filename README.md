@@ -3,7 +3,7 @@
 __Competitions:__ [LANL Earthquake Prediction](https://www.kaggle.com/c/LANL-Earthquake-Prediction)  
 __Rank:__ 186/4540 (Top 4%, silver)  
 __Task:__ Predict earthquake happen time, regression problem  
-__Data:__ trainset:length 629145480 signal record, testset:2624 signal record with a length of 150000
+__Data:__ trainset:length 629145480 signal record, testset:2624 signal record with a length of 150000  
 __Note:__ This is a code backup, it's not runable due to the difference file path  
 
 
@@ -72,7 +72,7 @@ __过拟合问题：__ 训练集和测试集分布不一致，包括训练集自
 
 __特征工程：__ python有一个特征抽取的包tsfresh，再加上scipy里面有一些信号处理的包signal，主要就是一些统计特征比如，min,max,mean,std,波峰波谷数，局部斜率，以及fft，频带滤波，窗口平滑之后的这些特征。在抽取完这些特征之后还做了特征的混合和过滤，最后选取了20个特征值。  
 
-#### Top Rank Solution  
+## Top Rank Solution  
 有几个solution比较印象深刻：  
 1. 也采用了ks检验，但他不仅用ks检验过滤特诊，还用ks检验过滤训练集，在训练集上抽取与测试集分布相似的子集作为训练集  
 2. 因为有数据泄露，所以可以预估测试集的均值，通过把训练集的均值强行拉成测试集的均值，从而达到更好的效果  
