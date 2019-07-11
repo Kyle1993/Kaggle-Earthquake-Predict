@@ -14,7 +14,7 @@ __Note:__ This is a code backup, it's not runable due to the difference file pat
 	* 如果采用有重复采样2w个，意味着每个样本都包含3个左右别的样本的片段，可能造成冗余，影响训练速度  
 	* 大致试验了几次，选择有重复采样1w个样本  
 2. __交叉验证：__  
-	* 选择3fold交叉验证，因为bert要跑很久，5fold太久了  
+	* 选择5fold交叉验证，减小过拟合风险  
 	* 所有步骤，哪怕不同的stage，也要严格遵守同一份cv，避免泄露  
 3. __提取DL Features__  
 	* 将采样训练集reshap成(100,1500)和(25,6000)的片段，这里仍然需要提取片段的手工特征，而后放到LSTM和CNN网络里提取DL特征  
